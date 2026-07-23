@@ -17,6 +17,7 @@ class MotionEstimator {
                    double q_angle, double q_omega);
 
   void Reset();
+  void ResetVelocity();
 
   double GetFilteredAngle() const { return filtered_angle_; }
   double GetAngularVelocity() const { return angular_velocity_; }

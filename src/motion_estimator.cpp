@@ -102,7 +102,23 @@ double MotionEstimator::EstimateRotation(const std::vector<Pin>& current_pins,
     return angular_velocity_;
   }
 
-  UpdateState(pin_angle, dt, kf_R_, kf_Q_angle_, kf_Q_omega_);
+  if (angular_velocity_ != 0 && pin_angle * angular_velocity_ < 0
+      && std::abs(pin_angle) > 0.02) {
+    kf_x_ = cv::Mat::zeros(2, 1, CV_64F);
+    kf_P_ = cv::Mat::eye(2, 2, CV_64F);
+    measured_cumulative_ = 0;
+    filtered_angle_ = 0;
+    angular_velocity_ = 0;
+    velocity_confidence_ = 0;
+    std::cout << "[Motion] Direction reversal detected, KF reset" << std::endl;
+  }
+
+  if (std::abs(angular_velocity_) < 0.01 && std::abs(pin_angle) > 0.01) {
+    double q_fast = kf_Q_omega_ * 10;
+    UpdateState(pin_angle, dt, kf_R_, kf_Q_angle_, q_fast);
+  } else {
+    UpdateState(pin_angle, dt, kf_R_, kf_Q_angle_, kf_Q_omega_);
+  }
   return angular_velocity_;
 }
 
@@ -138,6 +154,13 @@ void MotionEstimator::UpdateState(double measured_angle, double dt,
 
   double omega_var = kf_P_.at<double>(1, 1);
   velocity_confidence_ = std::max(0.0, std::min(1.0, 1.0 - omega_var * 10.0));
+}
+
+void MotionEstimator::ResetVelocity() {
+  angular_velocity_ = 0;
+  velocity_confidence_ = 0;
+  kf_x_.at<double>(1) = 0;
+  kf_P_ = cv::Mat::eye(2, 2, CV_64F);
 }
 
 void MotionEstimator::Reset() {

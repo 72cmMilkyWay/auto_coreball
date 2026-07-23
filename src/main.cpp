@@ -131,7 +131,7 @@ int main(int argc, char** argv) {
   double radius = 0.0;
   auto disc_detected_time = std::chrono::steady_clock::time_point::min();
 
-  double dynamic_lead_time = 0.12;
+  double dynamic_lead_time = 0.11;
   const double kInitMeasureTime = 1.0;
   bool awaiting_pin = false;
   int shot_pin_count = 0;
@@ -233,6 +233,7 @@ int main(int argc, char** argv) {
         consecutive_misses = 0;
         disc_detected_time = std::chrono::steady_clock::now();
         awaiting_pin = false;
+        motion_estimator.ResetVelocity();
         std::cout << "[Game] Game restarted, resuming" << std::endl;
       }
     }

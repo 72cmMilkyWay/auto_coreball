@@ -97,7 +97,8 @@ ClickDecision GameAnalyzer::DecideClick(const std::vector<GapInfo>& gaps,
     }
   }
 
-  if (best_gap && best_width < gaps[0].angle_width * 0.6) {
+  if (best_gap && static_cast<int>(gaps.size()) <= 15
+      && best_width < gaps[0].angle_width * 0.9) {
     best_gap = nullptr;
   }
 

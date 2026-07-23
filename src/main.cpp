@@ -132,6 +132,7 @@ int main(int argc, char** argv) {
   auto disc_detected_time = std::chrono::steady_clock::time_point::min();
 
   double dynamic_lead_time = 0.11;
+  const double kMinShotInterval = 0.5;
   const double kInitMeasureTime = 1.0;
   bool awaiting_pin = false;
   int shot_pin_count = 0;
@@ -355,6 +356,12 @@ int main(int argc, char** argv) {
         if (awaiting_pin) {
           status_msg = "Waiting for pin...";
         } else {
+          double since_last_shot = std::chrono::duration<double>(
+              std::chrono::steady_clock::now() - last_click_time).count();
+          if (since_last_shot < kMinShotInterval) {
+            status_msg = "Shot cooldown...";
+            goto skip_shot;
+          }
           app_state = AppState::ANALYZING_GAP;
           current_decision = game_analyzer.DecideClick(
               gaps, game_analyzer.GetInsertionAngle(),
@@ -381,6 +388,7 @@ int main(int argc, char** argv) {
           } else {
             status_msg = "Analyzing gaps...";
           }
+skip_shot: ;
         }
       }
     } else {

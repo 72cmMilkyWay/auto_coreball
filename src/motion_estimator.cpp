@@ -113,9 +113,10 @@ double MotionEstimator::EstimateRotation(const std::vector<Pin>& current_pins,
     std::cout << "[Motion] Direction reversal detected, KF reset" << std::endl;
   }
 
-  if (std::abs(angular_velocity_) < 0.01 && std::abs(pin_angle) > 0.01) {
-    double q_fast = kf_Q_omega_ * 10;
-    UpdateState(pin_angle, dt, kf_R_, kf_Q_angle_, q_fast);
+  if (std::abs(angular_velocity_) < 0.1 && std::abs(pin_angle) > 0.01) {
+    double q_fast = kf_Q_omega_ * 100;
+    double r_fast = kf_R_ * 0.1;
+    UpdateState(pin_angle, dt, r_fast, kf_Q_angle_, q_fast);
   } else {
     UpdateState(pin_angle, dt, kf_R_, kf_Q_angle_, kf_Q_omega_);
   }

@@ -1,0 +1,3 @@
+/home/chihaya/文档/Default Project/auto_coreball/build/CMakeFiles/auto_coreball.dir
+/home/chihaya/文档/Default Project/auto_coreball/build/CMakeFiles/edit_cache.dir
+/home/chihaya/文档/Default Project/auto_coreball/build/CMakeFiles/rebuild_cache.dir

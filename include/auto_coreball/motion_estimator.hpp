@@ -18,6 +18,7 @@ class MotionEstimator {
 
   void Reset();
   void ResetVelocity();
+  bool HasReversed();
 
   double GetFilteredAngle() const { return filtered_angle_; }
   double GetAngularVelocity() const { return angular_velocity_; }
@@ -26,6 +27,7 @@ class MotionEstimator {
 
  private:
   bool initialized_;
+  bool reversed_;
   double filtered_angle_;
   double angular_velocity_;
   double velocity_confidence_;
@@ -36,6 +38,7 @@ class MotionEstimator {
   double kf_Q_angle_;
   double kf_Q_omega_;
   double kf_R_;
+  int reversal_confirm_count_;
 
   double ComputeRotationFromPins(const std::vector<Pin>& current_pins,
                                   const std::vector<Pin>& prev_pins,

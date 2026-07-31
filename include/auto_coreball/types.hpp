@@ -11,6 +11,7 @@ struct Pin {
   cv::Point2f inner_pt;
   cv::Point2f outer_pt;
   double length;
+  bool has_number;
 };
 
 struct GameState {

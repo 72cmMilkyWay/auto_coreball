@@ -38,8 +38,7 @@ class Visualizer {
   void DrawDecision(cv::Mat& img, const ClickDecision& decision,
                     const cv::Point2f& center, double radius);
   void DrawStatus(cv::Mat& img, AppState state, const std::string& msg);
-  void DrawPins(cv::Mat& img, const std::vector<Pin>& pins,
-                const cv::Point2f& center);
+  void DrawPins(cv::Mat& img, const std::vector<Pin>& pins);
   void DrawRecording(cv::Mat& img);
 };
 

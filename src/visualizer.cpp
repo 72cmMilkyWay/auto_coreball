@@ -20,7 +20,7 @@ void Visualizer::Render(const cv::Mat& frame,
   if (frame.empty()) return;
   canvas_ = frame.clone();
 
-  DrawPins(canvas_, state.pins, state.center);
+  DrawPins(canvas_, state.pins);
   const GapInfo* target = decision.should_click ? &decision.target_gap : nullptr;
   DrawGaps(canvas_, gaps, state.center, state.disc_radius, target);
   DrawDecision(canvas_, decision, state.center, state.disc_radius);
@@ -29,8 +29,7 @@ void Visualizer::Render(const cv::Mat& frame,
   DrawRecording(canvas_);
 }
 
-void Visualizer::DrawPins(cv::Mat& img, const std::vector<Pin>& pins,
-                          const cv::Point2f& center) {
+void Visualizer::DrawPins(cv::Mat& img, const std::vector<Pin>& pins) {
   for (size_t i = 0; i < pins.size(); ++i) {
     const auto& pin = pins[i];
     cv::Scalar color(0, 255, 255);

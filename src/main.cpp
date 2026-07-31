@@ -58,24 +58,14 @@ int main(int argc, char** argv) {
     }
   }
 
-  std::cout << "=== Auto CoreBall (见缝插针) ===" << std::endl;
-  std::cout << "Visual SLAM based auto-player" << std::endl;
-  std::cout << std::endl;
-  std::cout << "Looking for window containing: '" << window_substr << "'" << std::endl;
-  std::cout << "Make sure the game is open in your browser." << std::endl;
-  std::cout << "Press Ctrl+C to exit." << std::endl;
-  std::cout << std::endl;
-
   ScreenCapture capture;
   if (!capture.OpenDisplay()) {
     std::cerr << "Failed to open display" << std::endl;
     return 1;
   }
 
-  std::cout << "Searching for game window..." << std::endl;
   int retry = 0;
   while (!capture.FindGameWindow(window_substr) && retry < 30) {
-    std::cout << "  Retry " << (retry + 1) << "/30..." << std::endl;
     std::this_thread::sleep_for(std::chrono::seconds(1));
     retry++;
   }
@@ -87,19 +77,10 @@ int main(int argc, char** argv) {
     return 1;
   }
 
-  int win_w = capture.GetWindowWidth();
-  int win_h = capture.GetWindowHeight();
-  std::cout << "Found game window: "
-            << win_w << "x" << win_h
-            << " at (" << capture.GetWindowX() << ", " << capture.GetWindowY() << ")"
-            << std::endl;
-
   if (debug_save) {
     cv::Mat debug_frame;
     if (capture.CaptureFrame(debug_frame)) {
       cv::imwrite("debug_raw_frame.png", debug_frame);
-      std::cout << "Saved debug_raw_frame.png - check this to see what the program sees"
-                << std::endl;
     }
   }
 
@@ -112,7 +93,7 @@ int main(int argc, char** argv) {
   click_controller.Initialize(capture.GetWindowX(), capture.GetWindowY());
 
   if (enable_viz) {
-    visualizer.Init("Auto CoreBall - Visual SLAM");
+    visualizer.Init("Auto CoreBall");
   }
 
   GameState game_state{};
@@ -124,15 +105,14 @@ int main(int argc, char** argv) {
   ClickDecision current_decision{};
   std::chrono::steady_clock::time_point last_click_time = std::chrono::steady_clock::now();
 
-  int frame_count = 0;
   auto last_frame_time = std::chrono::steady_clock::now();
   bool disc_detected = false;
   cv::Point2f center;
   double radius = 0.0;
   auto disc_detected_time = std::chrono::steady_clock::time_point::min();
 
-  double dynamic_lead_time = 0.11;
-  const double kMinShotInterval = 0.5;
+  double dynamic_lead_time = 0.08;
+  double kMinShotInterval = 0.5;
   const double kInitMeasureTime = 1.0;
   bool awaiting_pin = false;
   int shot_pin_count = 0;
@@ -141,15 +121,17 @@ int main(int argc, char** argv) {
   bool ever_had_pins = false;
   bool game_over = false;
   int zero_pin_frames = 0;
+  int burst_shots = 0;
+  double last_velocity = 0.0;
+  std::chrono::steady_clock::time_point speed_change_time =
+      std::chrono::steady_clock::time_point::min();
+  std::chrono::steady_clock::time_point reversal_time =
+      std::chrono::steady_clock::time_point::min();
 
   while (g_running) {
     if (click_controller.IsKeyPressed(XK_q)) {
-      std::cout << "\nQ pressed, exiting..." << std::endl;
       break;
     }
-
-    auto loop_start = std::chrono::steady_clock::now();
-    frame_count++;
 
     cv::Mat frame;
     if (!capture.CaptureFrame(frame)) {
@@ -164,13 +146,6 @@ int main(int argc, char** argv) {
       status_msg = "Detecting disc...";
       app_state = AppState::DETECTING_DISC;
       bool found = processor.DetectDisc(gray, center, radius);
-      if (frame_count % 30 == 0) {
-        std::cout << "[Frame " << frame_count << "] DetectDisc: "
-                  << (found ? "FOUND" : "not found")
-                  << " (window=" << capture.GetWindowWidth()
-                  << "x" << capture.GetWindowHeight() << ")"
-                  << std::endl;
-      }
       if (found) {
         disc_detected = true;
         motion_estimator.Init(center, radius);
@@ -186,6 +161,8 @@ int main(int argc, char** argv) {
         last_frame_time = std::chrono::steady_clock::now();
         last_click_time = std::chrono::steady_clock::now();
         disc_detected_time = std::chrono::steady_clock::now();
+        burst_shots = 0;
+        reversal_time = std::chrono::steady_clock::time_point::min();
         game_analyzer.Reset();
       } else {
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
@@ -199,21 +176,6 @@ int main(int argc, char** argv) {
 
     std::vector<Pin> current_pins = processor.DetectPins(gray, center, radius);
 
-    if (frame_count % 30 == 0) {
-      std::cout << "[Frame " << frame_count << "] Disc: ("
-                << static_cast<int>(center.x) << ","
-                << static_cast<int>(center.y) << ") r="
-                << static_cast<int>(radius)
-                << " Pins: " << current_pins.size();
-      if (!current_pins.empty()) {
-        std::cout << " Angles:";
-        for (const auto& p : current_pins) {
-          std::cout << " " << (p.angle_rad * 180.0 / CV_PI);
-        }
-      }
-      std::cout << std::endl;
-    }
-
     int current_pin_count = static_cast<int>(current_pins.size());
 
     if (current_pin_count > 0) {
@@ -224,7 +186,6 @@ int main(int argc, char** argv) {
       zero_pin_frames++;
       if (zero_pin_frames > 60 && !game_over) {
         game_over = true;
-        std::cout << "[Game] Game over detected, stopping clicks" << std::endl;
       }
     } else if (current_pin_count > 0) {
       zero_pin_frames = 0;
@@ -233,9 +194,9 @@ int main(int argc, char** argv) {
         ever_had_pins = false;
         consecutive_misses = 0;
         disc_detected_time = std::chrono::steady_clock::now();
+        burst_shots = 0;
         awaiting_pin = false;
-        motion_estimator.ResetVelocity();
-        std::cout << "[Game] Game restarted, resuming" << std::endl;
+        reversal_time = std::chrono::steady_clock::time_point::min();
       }
     }
 
@@ -255,29 +216,32 @@ int main(int argc, char** argv) {
       consecutive_failures = 0;
     }
 
-    // 延迟测量
     if (awaiting_pin) {
       if (current_pin_count > shot_pin_count) {
-        double delay = std::chrono::duration<double>(
-            std::chrono::steady_clock::now() - shot_time).count();
         awaiting_pin = false;
         consecutive_misses = 0;
-        std::cout << "[Timing] Actual delay = " << (delay * 1000.0)
-                  << " ms (click to new pin)" << std::endl;
       } else if (std::chrono::duration<double>(
           std::chrono::steady_clock::now() - shot_time).count() > 1.0) {
         awaiting_pin = false;
         consecutive_misses++;
-        std::cout << "[Timing] Miss #" << consecutive_misses << std::endl;
         if (consecutive_misses >= 1) {
           game_over = true;
-          std::cout << "[Game] Game over detected (shot missed)" << std::endl;
         }
       }
     }
 
     double angular_velocity = motion_estimator.EstimateRotation(
         current_pins, prev_pins, dt);
+
+    if (motion_estimator.HasReversed()) {
+      reversal_time = std::chrono::steady_clock::now();
+    }
+
+    if (std::abs(angular_velocity - last_velocity) > 0.5 &&
+        motion_estimator.GetVelocityConfidence() > 0.3) {
+      speed_change_time = std::chrono::steady_clock::now();
+    }
+    last_velocity = angular_velocity;
 
     game_state.pins = current_pins;
     game_state.pin_count = static_cast<int>(current_pins.size());
@@ -291,34 +255,11 @@ int main(int argc, char** argv) {
       game_state.gaps.push_back(g.angle_width);
     }
 
-    if (frame_count % 30 == 0 && !gaps.empty()) {
-      auto after_analysis = std::chrono::steady_clock::now();
-      double process_ms = std::chrono::duration<double>(after_analysis - loop_start).count() * 1000.0;
-
-      std::string dir = (angular_velocity > 0) ? "CW" : "CCW";
-      std::cout << "  Gaps: " << gaps.size()
-                << " Best: " << (gaps[0].angle_width * 180.0 / CV_PI) << " deg"
-                << " Vel: " << angular_velocity << " rad/s (" << dir << ")"
-                << " Conf: " << motion_estimator.GetVelocityConfidence()
-                << " Lead: " << dynamic_lead_time
-                << " Proc: " << static_cast<int>(process_ms) << "ms"
-                << std::endl;
-
-      if (current_pins.size() >= 2 && prev_pins.size() >= 2) {
-        std::cout << "  Pin movement (cur - prev):";
-        for (size_t i = 0; i < current_pins.size() && i < 3; ++i) {
-          double diff = current_pins[i].angle_rad - prev_pins[i].angle_rad;
-          while (diff > CV_PI) diff -= 2 * CV_PI;
-          while (diff < -CV_PI) diff += 2 * CV_PI;
-          std::cout << " " << (diff * 180.0 / CV_PI) << "deg";
-        }
-        std::cout << " (+ = angle increase)" << std::endl;
-      }
+    int unnumbered_count = 0;
+    for (const auto& p : current_pins) {
+      if (!p.has_number) unnumbered_count++;
     }
 
-    // =============================================
-    // 2. 决策与击发
-    // =============================================
     double elapsed_since_detection = std::chrono::duration<double>(
         std::chrono::steady_clock::now() - disc_detected_time).count();
     if (elapsed_since_detection < kInitMeasureTime) {
@@ -327,12 +268,9 @@ int main(int argc, char** argv) {
     } else if (game_over) {
       status_msg = "Game over. Waiting for restart...";
       app_state = AppState::WAITING;
-    } else if (current_pins.size() < 2 && !no_click) {
-      app_state = AppState::TRACKING;
+    } else if (burst_shots < 15 && unnumbered_count < 2 && !no_click) {
       auto since_last = std::chrono::steady_clock::now() - last_click_time;
-      bool first_fire = (last_click_time - disc_detected_time) < std::chrono::milliseconds(50);
-      auto delay = first_fire ? std::chrono::milliseconds(1000) : std::chrono::milliseconds(500);
-      if (since_last > delay) {
+      if (since_last > std::chrono::milliseconds(100)) {
         double click_x = center.x;
         double click_y = center.y + radius * 4;
         click_controller.ClickOnWindow(static_cast<int>(click_x),
@@ -341,13 +279,12 @@ int main(int argc, char** argv) {
         awaiting_pin = true;
         shot_pin_count = current_pin_count;
         shot_time = last_click_time;
-        status_msg = "Startup CLICK!";
-        std::cout << "[Startup] Blind fire, pins=" << current_pins.size()
-                  << " vel=" << angular_velocity << " rad/s" << std::endl;
+        ++burst_shots;
+        status_msg = "Burst " + std::to_string(burst_shots) + "/15";
       } else {
-        status_msg = "Startup: waiting...";
+        status_msg = "Burst: waiting...";
       }
-    } else if (motion_estimator.GetVelocityConfidence() > 0.5) {
+    } else if (motion_estimator.GetVelocityConfidence() > 0.15) {
       auto warmup_elapsed = std::chrono::duration<double>(
           std::chrono::steady_clock::now() - disc_detected_time).count();
       if (warmup_elapsed < 1.0) {
@@ -358,6 +295,28 @@ int main(int argc, char** argv) {
         } else {
           double since_last_shot = std::chrono::duration<double>(
               std::chrono::steady_clock::now() - last_click_time).count();
+          if (speed_change_time != std::chrono::steady_clock::time_point::min()) {
+            double sc_elapsed = std::chrono::duration<double>(
+                std::chrono::steady_clock::now() - speed_change_time).count();
+            if (sc_elapsed < 0.5) {
+              status_msg = "Speed change: measuring...";
+              goto skip_shot;
+            }
+          }
+          if (reversal_time != std::chrono::steady_clock::time_point::min()) {
+            double rev_elapsed = std::chrono::duration<double>(
+                std::chrono::steady_clock::now() - reversal_time).count();
+            if (rev_elapsed < 0.3) {
+              status_msg = "Reversal: measuring...";
+              goto skip_shot;
+            } else if (rev_elapsed < 3.0) {
+              kMinShotInterval = 0.5;
+            } else {
+              kMinShotInterval = 10.0;
+            }
+          } else {
+            kMinShotInterval = 0.5;
+          }
           if (since_last_shot < kMinShotInterval) {
             status_msg = "Shot cooldown...";
             goto skip_shot;
@@ -365,7 +324,7 @@ int main(int argc, char** argv) {
           app_state = AppState::ANALYZING_GAP;
           current_decision = game_analyzer.DecideClick(
               gaps, game_analyzer.GetInsertionAngle(),
-              angular_velocity, motion_estimator.GetFilteredAngle(),
+              angular_velocity,
               motion_estimator.GetVelocityConfidence(),
               dynamic_lead_time);
 
@@ -381,10 +340,6 @@ int main(int argc, char** argv) {
             shot_pin_count = current_pin_count;
             shot_time = last_click_time;
             status_msg = "CLICK!";
-            std::cout << "CLICK! Fired with lead time: " << dynamic_lead_time
-                      << "s, gap=" << (current_decision.target_gap.angle_width * 180.0 / CV_PI)
-                      << "deg, vel=" << angular_velocity << " rad/s"
-                      << std::endl;
           } else {
             status_msg = "Analyzing gaps...";
           }
@@ -411,7 +366,6 @@ skip_shot: ;
     prev_pins = current_pins;
   }
 
-  std::cout << "\nExiting..." << std::endl;
   cv::destroyAllWindows();
   capture.CloseDisplay();
   return 0;

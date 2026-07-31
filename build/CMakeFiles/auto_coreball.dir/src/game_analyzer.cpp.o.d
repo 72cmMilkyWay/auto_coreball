@@ -240,5 +240,4 @@ CMakeFiles/auto_coreball.dir/src/game_analyzer.cpp.o: \
  /usr/include/opencv4/opencv2/core/optim.hpp \
  /usr/include/opencv4/opencv2/core/ovx.hpp \
  /usr/include/opencv4/opencv2/core/cvdef.h \
- /home/chihaya/文档/Default\ Project/auto_coreball/include/auto_coreball/types.hpp \
- /usr/include/c++/11/iostream
+ /home/chihaya/文档/Default\ Project/auto_coreball/include/auto_coreball/types.hpp

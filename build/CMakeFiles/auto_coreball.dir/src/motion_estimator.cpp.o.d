@@ -241,5 +241,4 @@ CMakeFiles/auto_coreball.dir/src/motion_estimator.cpp.o: \
  /usr/include/opencv4/opencv2/video/tracking.hpp \
  /usr/include/opencv4/opencv2/imgproc.hpp \
  /usr/include/opencv4/opencv2/imgproc/segmentation.hpp \
- /home/chihaya/文档/Default\ Project/auto_coreball/include/auto_coreball/types.hpp \
- /usr/include/c++/11/iostream
+ /home/chihaya/文档/Default\ Project/auto_coreball/include/auto_coreball/types.hpp

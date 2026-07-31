@@ -32,7 +32,6 @@ class GameAnalyzer {
   ClickDecision DecideClick(const std::vector<GapInfo>& gaps,
                             double insertion_angle,
                             double angular_velocity,
-                            double current_angle,
                             double velocity_confidence,
                             double dynamic_lead_time);
 

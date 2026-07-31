@@ -1,18 +1,19 @@
 #include "auto_coreball/motion_estimator.hpp"
 #include <algorithm>
 #include <cmath>
-#include <iostream>
 #include <limits>
 
 MotionEstimator::MotionEstimator()
     : initialized_(false),
+      reversed_(false),
       filtered_angle_(0.0),
       angular_velocity_(0.0),
       velocity_confidence_(0.0),
       measured_cumulative_(0.0),
       kf_Q_angle_(0.001),
-      kf_Q_omega_(0.01),
-      kf_R_(0.001) {
+      kf_Q_omega_(0.03),
+      kf_R_(0.005),
+      reversal_confirm_count_(0) {
   kf_x_ = cv::Mat::zeros(2, 1, CV_64F);
   kf_P_ = cv::Mat::eye(2, 2, CV_64F);
 }
@@ -21,9 +22,11 @@ void MotionEstimator::Init(const cv::Point2f& center, double radius) {
   (void)center;
   (void)radius;
   initialized_ = true;
+  reversed_ = false;
   filtered_angle_ = 0.0;
   angular_velocity_ = 0.0;
   measured_cumulative_ = 0.0;
+  reversal_confirm_count_ = 0;
   kf_x_ = cv::Mat::zeros(2, 1, CV_64F);
   kf_P_ = cv::Mat::eye(2, 2, CV_64F);
 }
@@ -48,7 +51,7 @@ double MotionEstimator::ComputeRotationFromPins(
         best_diff = diff;
       }
     }
-    if (std::abs(best_diff) < 0.5) {
+      if (std::abs(best_diff) < 0.2) {
       angle_diffs.push_back(best_diff);
     }
   }
@@ -94,9 +97,23 @@ double MotionEstimator::EstimateRotation(const std::vector<Pin>& current_pins,
                                          double dt) {
   if (!initialized_) return 0.0;
 
+  std::vector<Pin> unnumbered_current, unnumbered_prev;
+  for (const auto& p : current_pins) {
+    if (!p.has_number) unnumbered_current.push_back(p);
+  }
+  for (const auto& p : prev_pins) {
+    if (!p.has_number) unnumbered_prev.push_back(p);
+  }
+
   double pin_confidence = 0.0;
-  double pin_angle = ComputeRotationFromPins(current_pins, prev_pins,
-                                              pin_confidence);
+  double pin_angle = 0.0;
+  if (unnumbered_current.size() >= 2 && unnumbered_prev.size() >= 2) {
+    pin_angle = ComputeRotationFromPins(unnumbered_current, unnumbered_prev,
+                                        pin_confidence);
+  } else {
+    pin_angle = ComputeRotationFromPins(current_pins, prev_pins,
+                                        pin_confidence);
+  }
 
   if (pin_confidence < 0.2) {
     return angular_velocity_;
@@ -104,13 +121,19 @@ double MotionEstimator::EstimateRotation(const std::vector<Pin>& current_pins,
 
   if (angular_velocity_ != 0 && pin_angle * angular_velocity_ < 0
       && std::abs(pin_angle) > 0.02) {
-    kf_x_ = cv::Mat::zeros(2, 1, CV_64F);
-    kf_P_ = cv::Mat::eye(2, 2, CV_64F);
-    measured_cumulative_ = 0;
-    filtered_angle_ = 0;
-    angular_velocity_ = 0;
-    velocity_confidence_ = 0;
-    std::cout << "[Motion] Direction reversal detected, KF reset" << std::endl;
+    reversal_confirm_count_++;
+    if (reversal_confirm_count_ >= 3) {
+      kf_x_ = cv::Mat::zeros(2, 1, CV_64F);
+      kf_P_ = cv::Mat::eye(2, 2, CV_64F);
+      measured_cumulative_ = 0;
+      filtered_angle_ = 0;
+      angular_velocity_ = 0;
+      velocity_confidence_ = 0;
+      reversed_ = true;
+      reversal_confirm_count_ = 0;
+    }
+  } else {
+    reversal_confirm_count_ = 0;
   }
 
   if (std::abs(angular_velocity_) < 0.1 && std::abs(pin_angle) > 0.01) {
@@ -164,12 +187,20 @@ void MotionEstimator::ResetVelocity() {
   kf_P_ = cv::Mat::eye(2, 2, CV_64F);
 }
 
+bool MotionEstimator::HasReversed() {
+  bool ret = reversed_;
+  reversed_ = false;
+  return ret;
+}
+
 void MotionEstimator::Reset() {
   initialized_ = false;
+  reversed_ = false;
   filtered_angle_ = 0;
   angular_velocity_ = 0;
   velocity_confidence_ = 0;
   measured_cumulative_ = 0;
+  reversal_confirm_count_ = 0;
   kf_x_ = cv::Mat::zeros(2, 1, CV_64F);
   kf_P_ = cv::Mat::eye(2, 2, CV_64F);
 }

@@ -1,8 +1,7 @@
 #include "auto_coreball/game_analyzer.hpp"
 #include <algorithm>
 #include <cmath>
-#include <iostream>
-#include <limits>
+
 
 GameAnalyzer::GameAnalyzer()
     : insertion_angle_(CV_PI / 2),
@@ -56,7 +55,6 @@ std::vector<GapInfo> GameAnalyzer::FindGaps(const std::vector<Pin>& pins) {
 ClickDecision GameAnalyzer::DecideClick(const std::vector<GapInfo>& gaps,
                                         double insertion_angle,
                                         double angular_velocity,
-                                        double current_angle,
                                         double velocity_confidence,
                                         double dynamic_lead_time) {
   ClickDecision decision;
@@ -69,18 +67,36 @@ ClickDecision GameAnalyzer::DecideClick(const std::vector<GapInfo>& gaps,
   }
 
   double rotation_period = 2 * CV_PI / std::abs(angular_velocity);
+
+  if (gaps.size() > 10 && gaps[0].angle_width >= min_gap_width_ * 3.0) {
+    double angular_dist = gaps[0].angle_center - insertion_angle;
+    while (angular_dist > CV_PI) angular_dist -= 2 * CV_PI;
+    while (angular_dist < -CV_PI) angular_dist += 2 * CV_PI;
+    double time_to_reach = -angular_dist / angular_velocity;
+    while (time_to_reach < 0) time_to_reach += rotation_period;
+    double target_center = dynamic_lead_time + 0.035;
+    double time_error = std::abs(time_to_reach - target_center);
+    if (time_error <= 0.015) {
+      decision.should_click = true;
+      decision.target_gap = gaps[0];
+      decision.click_angle = gaps[0].angle_center;
+      decision.confidence = velocity_confidence;
+    }
+    return decision;
+  }
+
   double gap_spacing = 2 * CV_PI / static_cast<double>(gaps.size());
   double window_angle = std::min(gap_spacing * 0.25, CV_PI / 6.0);
-  double window = window_angle / std::abs(angular_velocity);
+  double window = std::max(window_angle / std::abs(angular_velocity), 0.05);
 
-  double target_upper = dynamic_lead_time + 0.015;
-  double target_lower = target_upper - window;
+  double target_center = dynamic_lead_time + 0.035;
 
   const GapInfo* best_gap = nullptr;
   double best_width = 0.0;
+  double best_time_to_reach = 0.0;
 
   for (const auto& gap : gaps) {
-    if (gap.angle_width < min_gap_width_ * 1.2) continue;
+    if (gap.angle_width < 0.2) continue;
 
     double angular_dist = gap.angle_center - insertion_angle;
     while (angular_dist > CV_PI) angular_dist -= 2 * CV_PI;
@@ -89,24 +105,28 @@ ClickDecision GameAnalyzer::DecideClick(const std::vector<GapInfo>& gaps,
     double time_to_reach = -angular_dist / angular_velocity;
     while (time_to_reach < 0) time_to_reach += rotation_period;
 
-    if (time_to_reach <= target_upper && time_to_reach > target_lower) {
+    bool in_window;
+    if (gaps.size() <= 3) {
+      double gap_time = gap.angle_width / std::abs(angular_velocity);
+      double tolerance = std::max(gap_time * 0.3, 0.008);
+      double time_error = std::abs(time_to_reach - target_center);
+      in_window = (time_error <= tolerance);
+    } else {
+      double target_lower = target_center - window / 2.0;
+      double target_upper = target_center + window / 2.0;
+      in_window = (time_to_reach <= target_upper && time_to_reach > target_lower);
+    }
+
+    if (in_window) {
       if (gap.angle_width > best_width) {
         best_width = gap.angle_width;
         best_gap = &gap;
+        best_time_to_reach = time_to_reach;
       }
     }
   }
 
-  int n = static_cast<int>(gaps.size());
-  double threshold = 0.0;
-  if (n > 15) {
-    threshold = 0.0;
-  } else if (n > 10) {
-    threshold = 0.9;
-  } else {
-    threshold = 0.8;
-  }
-  if (threshold > 0 && best_gap && best_width < gaps[0].angle_width * threshold) {
+  if (best_gap && best_width < gaps[0].angle_width * 0.95) {
     best_gap = nullptr;
   }
 

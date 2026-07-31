@@ -485,8 +485,7 @@ CMakeFiles/auto_coreball.dir/src/game_analyzer.cpp.o: ../src/game_analyzer.cpp \
   /usr/include/opencv4/opencv2/core/optim.hpp \
   /usr/include/opencv4/opencv2/core/ovx.hpp \
   /usr/include/opencv4/opencv2/core/cvdef.h \
-  ../include/auto_coreball/types.hpp \
-  /usr/include/c++/11/iostream
+  ../include/auto_coreball/types.hpp
 
 CMakeFiles/auto_coreball.dir/src/image_processor.cpp.o: ../src/image_processor.cpp \
   /usr/include/stdc-predef.h \
@@ -784,17 +783,7 @@ CMakeFiles/auto_coreball.dir/src/image_processor.cpp.o: ../src/image_processor.c
   /usr/include/c++/11/bits/stl_deque.h \
   /usr/include/c++/11/bits/deque.tcc \
   ../include/auto_coreball/types.hpp \
-  /usr/include/opencv4/opencv2/imgcodecs.hpp \
-  /usr/include/c++/11/iostream \
-  /usr/include/c++/11/iomanip \
-  /usr/include/c++/11/locale \
-  /usr/include/c++/11/bits/locale_facets_nonio.h \
-  /usr/include/x86_64-linux-gnu/c++/11/bits/time_members.h \
-  /usr/include/x86_64-linux-gnu/c++/11/bits/messages_members.h \
-  /usr/include/libintl.h \
-  /usr/include/c++/11/bits/codecvt.h \
-  /usr/include/c++/11/bits/locale_facets_nonio.tcc \
-  /usr/include/c++/11/bits/locale_conv.h
+  /usr/include/opencv4/opencv2/imgcodecs.hpp
 
 CMakeFiles/auto_coreball.dir/src/main.cpp.o: ../src/main.cpp \
   /usr/include/stdc-predef.h \
@@ -1450,8 +1439,7 @@ CMakeFiles/auto_coreball.dir/src/motion_estimator.cpp.o: ../src/motion_estimator
   /usr/include/opencv4/opencv2/video/tracking.hpp \
   /usr/include/opencv4/opencv2/imgproc.hpp \
   /usr/include/opencv4/opencv2/imgproc/segmentation.hpp \
-  ../include/auto_coreball/types.hpp \
-  /usr/include/c++/11/iostream
+  ../include/auto_coreball/types.hpp
 
 CMakeFiles/auto_coreball.dir/src/screen_capture.cpp.o: ../src/screen_capture.cpp \
   /usr/include/stdc-predef.h \
@@ -2117,10 +2105,6 @@ CMakeFiles/auto_coreball.dir/src/visualizer.cpp.o: ../src/visualizer.cpp \
 
 /usr/include/c++/11/atomic:
 
-/usr/include/opencv4/opencv2/highgui.hpp:
-
-../src/main.cpp:
-
 /usr/include/c++/11/bits/locale_conv.h:
 
 /usr/include/c++/11/bits/locale_facets_nonio.tcc:
@@ -2132,6 +2116,10 @@ CMakeFiles/auto_coreball.dir/src/visualizer.cpp.o: ../src/visualizer.cpp \
 /usr/include/x86_64-linux-gnu/c++/11/bits/time_members.h:
 
 /usr/include/c++/11/bits/locale_facets_nonio.h:
+
+/usr/include/opencv4/opencv2/highgui.hpp:
+
+../src/main.cpp:
 
 /usr/include/x86_64-linux-gnu/sys/ucontext.h:
 

@@ -243,11 +243,4 @@ CMakeFiles/auto_coreball.dir/src/image_processor.cpp.o: \
  /usr/include/c++/11/deque /usr/include/c++/11/bits/stl_deque.h \
  /usr/include/c++/11/bits/deque.tcc \
  /home/chihaya/文档/Default\ Project/auto_coreball/include/auto_coreball/types.hpp \
- /usr/include/opencv4/opencv2/imgcodecs.hpp /usr/include/c++/11/iostream \
- /usr/include/c++/11/iomanip /usr/include/c++/11/locale \
- /usr/include/c++/11/bits/locale_facets_nonio.h \
- /usr/include/x86_64-linux-gnu/c++/11/bits/time_members.h \
- /usr/include/x86_64-linux-gnu/c++/11/bits/messages_members.h \
- /usr/include/libintl.h /usr/include/c++/11/bits/codecvt.h \
- /usr/include/c++/11/bits/locale_facets_nonio.tcc \
- /usr/include/c++/11/bits/locale_conv.h
+ /usr/include/opencv4/opencv2/imgcodecs.hpp
